@@ -1,0 +1,165 @@
+---
+title: "In Depth Analysis of COVID 19 Data for 2 Small European Nations"
+author: "Steven Lee"
+date: "2023-10-15"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Library Used
+```{r library, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+## Import Data
+Import COVID 19 Data by the given URL as a .csv file. 
+
+```{r import_data}
+url_in <- 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/'
+file_names <- 
+  c('time_series_covid19_confirmed_global.csv',
+    'time_series_covid19_deaths_global.csv',
+    'time_series_covid19_recovered_global.csv')
+urls <- str_c(url_in, file_names)
+global_cases <- read_csv(urls[1])
+global_deaths <- read_csv(urls[2])
+global_recovered <- read_csv(urls[3])
+```
+
+## Data Clean Up
+Cleaning the raw data so that it's more usable. This involves omitting some column values especially those that are marked NA and name editing.
+
+```{r data_clean}
+#For Global cases
+global_cases <- global_cases %>%
+  pivot_longer(cols = -c('Province/State', 'Country/Region', Lat, Long),
+               names_to = 'date',
+               values_to = 'cases') %>%
+  select(-c(Lat, Long)) %>%
+  rename(province_state = 'Province/State', country_region = 'Country/Region')
+
+#For Global deaths
+global_deaths <- global_deaths %>%
+  pivot_longer(cols = -c('Province/State', 'Country/Region', Lat, Long),
+               names_to = 'date',
+               values_to = 'deaths') %>%
+  select(-c(Lat, Long)) %>%
+  rename(province_state = 'Province/State', country_region = 'Country/Region')
+
+#For Combining global cases and global deaths
+global <- global_cases %>%
+  full_join(global_deaths) %>% 
+  mutate(date = mdy(date)) %>%
+  filter(cases > 0)
+
+global <- global %>% filter(cases > 0)
+
+summary(global)
+
+#Global by country
+global_by_country <- global %>%
+  group_by(country_region, date) %>%
+  summarize(cases = sum(cases), deaths = sum(deaths))
+
+#Retrieving Iceland data
+Iceland <- global_by_country %>%
+  filter(country_region == 'Iceland') %>%
+  mutate(new_cases = cases - lag(cases),
+         new_deaths = deaths - lag(deaths)) %>%
+  select(everything()) %>% drop_na()
+
+summary(Iceland)
+
+#Retrieving Malta data
+Malta <- global_by_country %>%
+  filter(country_region == 'Malta') %>%
+  mutate(new_cases = cases - lag(cases),
+         new_deaths = deaths - lag(deaths)) %>%
+  select(everything()) %>% drop_na()
+
+summary(Malta)
+```
+
+## Visualizations
+Now that all the data is organized, we can make some visualizations to answer some questions especially how changes in Canadian cases and deaths relate to the world as whole.
+
+1. How many cases and deaths were there to date in Iceland?
+```{r iceland_overall}
+Iceland %>%
+  ggplot() +
+  geom_line(aes(x = date, y = deaths, color = 'deaths')) + 
+  geom_line(aes(x = date, y = cases, color = 'cases')) +
+  scale_y_continuous(trans = 'log2') +
+  labs(title = 'Iceland COVID Cases and Deaths', 
+       x = 'Date', y = 'Deaths and Cases') +
+  scale_x_date(date_labels = '%m-%Y', date_breaks = '3 month') +
+  theme(axis.text.x = element_text(angle = 300))
+```
+
+2. How many cases and deaths were there to date in Malta?
+```{r malta_overall}
+Malta %>%
+  ggplot() +
+  geom_line(aes(x = date, y = deaths, color = 'deaths')) + 
+  geom_line(aes(x = date, y = cases, color = 'cases')) +
+  scale_y_continuous(trans = 'log2') +
+  labs(title = 'Malta COVID Cases and Deaths', 
+       x = 'Date', y = 'Deaths and Cases') +
+  scale_x_date(date_labels = '%m-%Y', date_breaks = '3 month') +
+  theme(axis.text.x = element_text(angle = 300))
+```
+
+3. How does Iceland and Malta compare to each other?
+```{r Iceland_malta_overall}
+ggplot() +
+  geom_line(data = Iceland, aes(x = date, y = deaths, color = 'Iceland Deaths')) +
+  geom_line(data = Iceland, aes(x = date, y = cases, color = 'Iceland Cases')) +
+  geom_line(data = Malta, aes(x = date, y = deaths, color = 'Malta Deaths')) +
+  geom_line(data = Malta, aes(x = date, y = cases, color = 'Malta Cases')) +
+  scale_y_continuous(trans = 'log2') + 
+  labs(title = 'Iceland and Malta Cases and Deaths',  x = 'Date', y = 'Value Scaled by Log Base 2') +
+  scale_x_date(date_labels = '%m-%Y', date_breaks = '3 month') +
+  theme(axis.text.x = element_text(angle = 300))
+```
+
+## Modeling
+
+Now that we have a basic picture of what cases look like over time in Iceland and Malta, let's dive into modeling for predicted death based on number of cases for both countries.
+```{r regression_Iceland_deaths}
+Iceland_death_model <- lm(deaths ~ cases, data = Iceland)
+
+summary(Iceland_death_model)
+
+Iceland <- Iceland %>%
+  mutate(pred_deaths = predict(Iceland_death_model))
+Iceland %>%
+  ggplot() + 
+  geom_line(aes(x = cases, y = deaths, color = 'Actual Number of Deaths')) + 
+  geom_line(aes(x = cases, y = pred_deaths, color = 'Predicted Number of Deaths')) +
+  labs(title = 'Iceland Deaths as a Function of Cases', x = 'Number of Cases', y = 'Number of Deaths')
+```
+
+```{r regression_Malta_deaths}
+Malta_death_model <- lm(deaths ~ cases, data = Malta)
+
+summary(Malta_death_model)
+
+Malta <- Malta %>%
+  mutate(pred_deaths = predict(Malta_death_model))
+Malta %>%
+  ggplot() + 
+  geom_line(aes(x = cases, y = deaths, color = 'Actual Number of Deaths')) + 
+  geom_line(aes(x = cases, y = pred_deaths, color = 'Predicted Number of Deaths')) +
+  labs(title = 'Malta Deaths as a Function of Cases', x = 'Number of Cases', y = 'Number of Deaths')
+```
+
+Based on the Linear Regression Models, we can see that Malta's trend follows very closely with the predicted outcomes based on the number of cases present. Iceland on the other hand managed to reduce deaths falling under the predicted outcome.
+
+## Bias
+The possible biases present in this data include data collection, how cases were tested and deemed positive, how local climate might impact transmission rates, how the healthcare systems differ in both countries in how they manage patients with COVID 19. Responding to these biases may present a fuller picture as to how these two small European nations varied differently in how they handeld COVID 19 Deaths relative to the number of cases.
