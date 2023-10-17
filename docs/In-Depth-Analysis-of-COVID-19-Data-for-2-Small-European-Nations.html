@@ -358,6 +358,11 @@ Small European Nations</h1>
 </div>
 
 
+<div id="the-topic" class="section level2">
+<h2>The Topic</h2>
+<p>I want to explore how Covid 19 cases and death may differ in 2 small
+European Nations of Iceland and Malta.</p>
+</div>
 <div id="library-used" class="section level2">
 <h2>Library Used</h2>
 <pre class="r"><code>library(tidyverse)
@@ -365,7 +370,11 @@ library(lubridate)</code></pre>
 </div>
 <div id="import-data" class="section level2">
 <h2>Import Data</h2>
-<p>Import COVID 19 Data by the given URL as a .csv file.</p>
+<p>Import COVID 19 Data by the given URL as a .csv file. This CSV file
+is from the COVID 19 Data Repository by the Center of Systems Science
+and Engineering at Johns Hopkins University. The repository aggregates
+data from a wide variety of sources worldwide and was updated through
+March 10, 2023.</p>
 <pre class="r"><code>url_in &lt;- &#39;https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/&#39;
 file_names &lt;- 
   c(&#39;time_series_covid19_confirmed_global.csv&#39;,

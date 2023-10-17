@@ -11,6 +11,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## The Topic
+I want to explore how Covid 19 cases and death may differ in 2 small European Nations of Iceland and Malta.
+
 ## Library Used
 ```{r library, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -18,7 +21,7 @@ library(lubridate)
 ```
 
 ## Import Data
-Import COVID 19 Data by the given URL as a .csv file. 
+Import COVID 19 Data by the given URL as a .csv file. This CSV file is from the COVID 19 Data Repository by the Center of Systems Science and Engineering at Johns Hopkins University. The repository aggregates data from a wide variety of sources worldwide and was updated through March 10, 2023.
 
 ```{r import_data}
 url_in <- 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/'
